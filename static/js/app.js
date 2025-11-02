@@ -17,6 +17,9 @@ const powerEl = document.getElementById("power");
 const predCurrentEl = document.getElementById("pred_current");
 const predPowerEl = document.getElementById("pred_power");
 
+const predNext24hWhEl = document.getElementById("pred_next24h_wh");
+const predNext24hKwhEl = document.getElementById("pred_next24h_kwh");
+
 // data buffers
 const t = []; const volt = []; const curr = []; const pwr = [];
 const pcurr = []; const ppwr = [];
@@ -158,6 +161,15 @@ function handleSample(entry) {
   const relay = parsed.relay ?? parsed["relay"];
   if (relay) {
     updateRelayButton(String(relay).toUpperCase());
+  }
+
+  // update prediction display if present (from PREDICT command response)
+  if (parsed.pred_next24h_wh !== undefined || parsed.pred_next24hwh !== undefined) {
+    const next24hWh = parseFloat(parsed.pred_next24h_wh ?? parsed.pred_next24hwh);
+    const next24hKwh = parseFloat(parsed.pred_next24h_kwh ?? parsed.pred_next24hkwh);
+    
+    if (isFinite(next24hWh)) predNext24hWhEl.textContent = next24hWh.toFixed(6);
+    if (isFinite(next24hKwh)) predNext24hKwhEl.textContent = next24hKwh.toFixed(9);
   }
 
   // update charts

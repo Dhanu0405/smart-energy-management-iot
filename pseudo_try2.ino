@@ -20,30 +20,28 @@ bool autoArm = true;           // enable/disable auto detection
 // --- Serial buffer ---
 String serialCmd = "";
 
-// ========= Detection params (tweakable) =========
 // Buffers and windows
-const int SHORT_WINDOW = 5;   // average of last N samples for detection
-const int BUFFER_SIZE  = 40;  // circular buffer size (>= SHORT_WINDOW)
+const int SHORT_WINDOW = 5;   
+const int BUFFER_SIZE  = 40;  
 
 // Detection persistence
 const int DETECT_CONSEC = 3;  // consecutive detection counts before auto-cut
 
 // Current thresholds (milliamp range)
-const float CURR_REL_PCT = 0.05f;    // 5% relative change
-const float CURR_MIN_ABS = 0.0003f;  // 0.3 mA absolute change
+const float CURR_REL_PCT = 0.05f;    
+const float CURR_MIN_ABS = 0.0003f;  
 
 // Power thresholds (milliwatt range)
-const float POWER_REL_PCT = 0.06f;   // 6% relative change
-const float POWER_MIN_ABS = 0.0008f; // 0.8 mW absolute change
+const float POWER_REL_PCT = 0.06f;   
+const float POWER_MIN_ABS = 0.0008f; 
 
 // Voltage thresholds (volts)
-const float VOLT_REL_PCT = 0.01f;    // 1% relative change
-const float VOLT_MIN_ABS = 0.010f;   // 10 mV absolute change
+const float VOLT_REL_PCT = 0.01f;    
+const float VOLT_MIN_ABS = 0.010f;   
 
 // Baseline adaptation (EMA)
-const float BASELINE_ALPHA = 0.02f;  // small -> slow adaptation
+const float BASELINE_ALPHA = 0.02f;  
 
-// Fake predictions (display only)
 const float FAKE_CURR_REL = 0.30f;
 const float FAKE_CURR_MIN = 0.0005f;
 const float FAKE_PWR_REL  = 0.50f;
@@ -51,7 +49,7 @@ const float FAKE_PWR_MIN  = 0.001f;
 // ==================================================
 
 // Prediction settings
-const int N_PRED_SAMPLES = 12; // number of recent samples to average for next-day prediction (10-20 recommended)
+const int N_PRED_SAMPLES = 12;
 
 // Circular buffers
 float buf_current[BUFFER_SIZE];
@@ -74,25 +72,30 @@ int consecutive_detects = 0;
 // timing
 unsigned long loop_delay_ms = 1000;
 
-// ================= TFLM / Eloquent TinyML (commented out) =================
 
-// #include "model_data.h" // <-- your model header, commented intentionally
-// #include "tensorflow/lite/micro/all_ops_resolver.h"
-// #include "tensorflow/lite/micro/micro_interpreter.h"
-// #include "tensorflow/lite/schema/schema_generated.h"
-// #include "tensorflow/lite/version.h"
-// #include <EloquentTinyML.h>
+#include "model_data.h" 
+#include <tflm_esp32.h>
+#include <eloquent_tinyml.h>
 
-// // placeholders for interpreter etc.
-// const unsigned char* model_data_ptr = model_data;
-// const int model_data_length = model_data_len;
-// static tflite::MicroMutableOpResolver<10> resolver;
-// const int kTensorArenaSize = 16*1024;
-// static uint8_t tensor_arena[kTensorArenaSize];
-// tflite::MicroInterpreter* interpreter = nullptr;
+#define N_INPUTS   90
+#define N_OUTPUTS  1
+#define ARENA_SIZE 20 * 1024
 
-// void setupML() { /* init model & interpreter here when enabling */ }
- // ========================================================================
+// Quantization parameters
+const float INPUT_SCALE = 0.0039215689f;
+const int   INPUT_ZERO_POINT = -128;
+const float OUTPUT_SCALE = 0.0042086756f;
+const int   OUTPUT_ZERO_POINT = -128;
+
+// Initialize model
+Eloquent::TF::Sequential<10, ARENA_SIZE> tf;
+
+// placeholders for interpreter etc.
+const unsigned char* model_data_ptr = model_tflite;
+const int model_data_length = model_tflite_len;
+const int kTensorArenaSize = 16*1024;
+static uint8_t tensor_arena[kTensorArenaSize];
+
 
 void setup() {
   Serial.begin(115200);
@@ -206,7 +209,7 @@ void loop() {
   float short_avg_power = (short_count > 0) ? (short_sum_power / (float)short_count) : power_W;
   float short_avg_volt = (short_count > 0) ? (short_sum_volt / (float)short_count) : voltage;
 
-  // detection using actual sensors (not fake preds)
+  // detection using actual sensors
   bool detect_curr = false;
   bool detect_power = false;
   bool detect_volt = false;
@@ -274,9 +277,8 @@ void loop() {
     consecutive_detects = 0;
   }
 
-  // fake predictions (display only)
-  float pred_current = fakePredictCurrent(current_A);
-  float pred_power   = fakePredictPower(power_W);
+  float pred_current = PredictCurrent(current_A);
+  float pred_power   = PredictPower(power_W);
 
   // CSV
   Serial.print(ts);
@@ -318,8 +320,8 @@ void loop() {
   delay(loop_delay_ms);
 }
 
-// --- fake predictions for display only ---
-float fakePredictCurrent(float measured) {
+
+float PredictCurrent(float measured) {
   if (measured <= 0.0f) return 0.0f;
   long r = random((int)(-1000 * FAKE_CURR_REL), (int)(1000 * FAKE_CURR_REL) + 1);
   float jitter_rel = (float)r / 1000.0f;
@@ -330,7 +332,7 @@ float fakePredictCurrent(float measured) {
   return pred;
 }
 
-float fakePredictPower(float measured) {
+float PredictPower(float measured) {
   if (measured <= 0.0f) return 0.0f;
   long r = random((int)(-1000 * FAKE_PWR_REL), (int)(1000 * FAKE_PWR_REL) + 1);
   float jitter_rel = (float)r / 1000.0f;
@@ -407,15 +409,12 @@ void applyRelayState() {
 }
 
 // --- Serial command handling ---
-// Commands:
 // RELAY ON  - manual restore (clears auto interruption)
 // RELAY OFF - manual off (clears auto interruption)
 // INTERRUPT - force interrupt (relay OFF)
-// RESUME    - clears interrupt (allow toggling)
 // TOGGLE    - toggle relay if not interrupted
 // STATUS    - show status + baselines
 // CALIBRATE - clear baseline and recollect startup samples
-// ARM/DISARM - enable/disable auto detection
 // PREDICT   - compute next-day energy prediction from recent samples
 void checkSerialCommands() {
   while (Serial.available()) {

@@ -25,6 +25,7 @@
             <button data-cmd="INTERRUPT" class="cmdBtn">INTERRUPT</button>
             <button data-cmd="STATUS" class="cmdBtn">STATUS</button>
             <button data-cmd="CALIBRATE" class="cmdBtn">CALIBRATE</button>
+            <button data-cmd="PREDICT" class="cmdBtn">PREDICT</button>
           </div>
         </div>
       </div>
@@ -60,6 +61,20 @@
           <div class="values">
             <div class="value"><label>Pred Current (A)</label><div id="pred_current" class="num">--</div></div>
             <div class="value"><label>Pred Power (W)</label><div id="pred_power" class="num">--</div></div>
+          </div>
+
+          <div class="prediction-section">
+            <h3>Next 24h Prediction</h3>
+            <div class="prediction-values">
+              <div class="pred-item">
+                <label>Next 24h (Wh)</label>
+                <div id="pred_next24h_wh" class="num">--</div>
+              </div>
+              <div class="pred-item">
+                <label>Next 24h (kWh)</label>
+                <div id="pred_next24h_kwh" class="num">--</div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
