@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Energy Monitor — Web Dashboard</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Energy Monitor</h1>
+      <div class="top-controls">
+        <select id="portSelect"></select>
+        <button id="refreshBtn">Refresh</button>
+        <button id="connectBtn">Connect</button>
+        <span id="connStatus">Disconnected</span>
+        <div class="relay-area">
+          <button id="relayBtn" class="relay off">Relay: UNKNOWN</button>
+          <div class="relay-controls">
+            <button data-cmd="RELAY OFF" class="cmdBtn">RELAY OFF</button>
+            <button data-cmd="RELAY ON" class="cmdBtn">RELAY ON</button>
+            <button data-cmd="TOGGLE" class="cmdBtn">TOGGLE</button>
+            <button data-cmd="INTERRUPT" class="cmdBtn">INTERRUPT</button>
+            <button data-cmd="STATUS" class="cmdBtn">STATUS</button>
+            <button data-cmd="CALIBRATE" class="cmdBtn">CALIBRATE</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="panels">
+        <div class="panel left">
+          <h2>Charts</h2>
+          <div class="values">
+            <div class="value"><label>Voltage (V)</label><div id="voltage" class="num">--</div></div>
+            <div class="value"><label>Current (A)</label><div id="current" class="num">--</div></div>
+            <div class="value"><label>Power (W)</label><div id="power" class="num">--</div></div>
+          </div>
+          <div class="charts-grid">
+            <div class="chart-item">
+              <h3>Chart A — Current (Actual vs Predicted)</h3>
+              <canvas id="chartActual" class="chart-canvas" height="260"></canvas>
+            </div>
+            <div class="chart-item">
+              <h3>Chart B — Power (Actual vs Predicted)</h3>
+              <canvas id="chartPred" class="chart-canvas" height="260"></canvas>
+            </div>
+            <div class="chart-item chart-span-2">
+              <h3>Chart C — Voltage (Actual)</h3>
+              <canvas id="chartVolt" class="chart-canvas" height="260"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel right">
+          <h2>Live Values</h2>
+          <div class="values">
+            <div class="value"><label>Pred Current (A)</label><div id="pred_current" class="num">--</div></div>
+            <div class="value"><label>Pred Power (W)</label><div id="pred_power" class="num">--</div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="log">
+        <h3>Log</h3>
+        <pre id="logView"></pre>
+      </section>
+    </main>
+
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
